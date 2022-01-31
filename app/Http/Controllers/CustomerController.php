@@ -2,89 +2,84 @@
 
 namespace App\Http\Controllers;
 
-use Validator;
+use App\Actions\UpdateCustomerAction;
+use App\Http\CustomerValidator;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function index() {
+    public function index()
+    {
 
         return Customer::all();
 
     }
 
-    public function show(Customer $customer) {
+    public function show(Customer $customer)
+    {
 
         return $customer->load('groups');
 
     }
 
-    public function store() {
-
-        $validator =  Validator::make(request()->all(),[
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
+            'email' => 'required|string|email|max:255|unique',
             'name' => 'string|max:255',
         ]);
-    
-        if($validator->fails()){
+
+        if ($validator->fails()) {
             return response([
                 "error" => 'validation_error',
                 "message" => $validator->errors(),
             ], 422);
         }
-        
-    
+
+
         $customer = new Customer;
         $customer->first_name = request('first_name');
         $customer->last_name = request('last_name');
         $customer->email = request('email');
-        
-        if($customer->save() && request('groups')) {
+
+        if ($customer->save() && request('groups')) {
             $customer->syncGroups(array_column(request('groups'), 'name'));
             $customer->load('groups');
         }
-        
+
         return $customer;
 
     }
 
-    public function update(Customer $customer) {
+    /**
+     * @param \App\Models\Customer $customer
+     * @param \App\Http\CustomerValidator $validator
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Actions\UpdateCustomerAction $action
+     * @param \Illuminate\Contracts\Routing\ResponseFactory $responseFactory
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function update(
+        Customer $customer,
+        CustomerValidator $validator,
+        Request $request,
+        UpdateCustomerAction $updateAction,
+        ResponseFactory $responseFactory
+    ): \Illuminate\Http\JsonResponse {
 
-        $validator =  Validator::make(request()->all(),[
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'name' => 'string|max:255',
-        ]);
-    
-        if($validator->fails()){
-            return response([
-                "error" => 'validation_error',
-                "message" => $validator->errors(),
-            ], 422);
-        }
-
-        $customer->first_name = request('first_name');
-        $customer->last_name = request('last_name');
-        $customer->email = request('email');
-
-        $success = $customer->save();
-        
-        if($success && request('groups')) {
-            $customer->syncGroups(array_column(request('groups'), 'name'));
-            $customer->load('groups');
-        }
-
-        return [
-            'success' => $success
-        ];
+        $updateAction->run($customer, $validator->getValidatedData($request), $validator->getValidatedGroups($request));
+        return $responseFactory->json($customer->toArray());
 
     }
 
-    public function destroy(Customer $customer) {
+    public function destroy(Customer $customer)
+    {
 
         $success = $customer->delete();
 

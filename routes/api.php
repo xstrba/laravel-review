@@ -19,6 +19,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// can be used
+//Route::apiResource('customers', CustomerController::class);
+
 Route::get('/customers', [CustomerController::class, 'index']);
 Route::get('/customers/{customer}', [CustomerController::class, 'show']);
 Route::post('/customers', [CustomerController::class, 'store']);

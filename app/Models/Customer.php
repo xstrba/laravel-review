@@ -17,13 +17,23 @@ class Customer extends Model
     ];
 
     public function groups(): BelongsToMany
-    { 
+    {
         return $this->belongsToMany(CustomerGroup::class);
     }
 
-    public function syncGroups(array $groups): void 
+    public function syncGroups(array $groups): void
     {
-        $newGroup = CustomerGroup::whereIn('name', $groups)->pluck('id')->toArray();
+        $newGroup = CustomerGroup::query()->whereIn('name', $groups)->pluck('id')->all();
         $this->groups()->sync($newGroup);
+    }
+
+    /**
+     * @param mixed[] $attributes
+     * @return bool
+     */
+    public function fillAndSave(array $attributes): bool
+    {
+        $this->fill($attributes);
+        return $this->save();
     }
 }
